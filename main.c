@@ -31,7 +31,7 @@ typedef struct FIELD_t {
 FIELD_INFO g_filed_info;
 
 void copy_field(FIELD* dest, FIELD* src) {
-  memcpy((void*)dest->tiles, (void*)src->tiles, sizeof(FIELD)*src->tiles_count);
+  memcpy((void*)dest->tiles, (void*)src->tiles, sizeof(TILE)*src->tiles_count);
   dest->tiles_count = src->tiles_count;
 }
 
@@ -58,7 +58,7 @@ void init_tile_patterns(TILE* tile_patterns) {
   tile_patterns[1].width = tile_patterns[1].height = 2;
   tile_patterns[2].width = 4;
   tile_patterns[2].height = 2;
-  tile_patterns[3].width = tile_patterns[3].height = 2;
+  tile_patterns[3].width = tile_patterns[3].height = 4;
 }
 
 int chk_tile_exist(FIELD* f, char x, char y) {
@@ -69,11 +69,11 @@ int chk_tile_exist(FIELD* f, char x, char y) {
     p = &f->tiles[i];
     if (x >= p->x && x < p->x + p->width) {
       if (y >= p->y && y < p->y + p->height) {
-        return TRUE;
+        return i;
       }
     }
   }
-  return FALSE;
+  return -1;
 }
 
 int tile_collision(TILE* p0, TILE* p1) {
@@ -139,10 +139,17 @@ int tile_placement(FIELD* f, TILE* p) {
 
 int solve_field(FIELD* f, TILE* patterns, char x, char y) {
   int i = 0;
+  int j = 0;
   int ret = 0;
   TILE tile;
   FIELD* next_field = NULL;
   FIELD_INFO* info = &g_filed_info;
+  int exist_idx = -1;
+
+  exist_idx = chk_tile_exist(f, x, y);
+  if (exist_idx > 0) {
+    x += f->tiles[exist_idx].width;
+  }
 
   for (i = 0; i < cTILE_PATTERNS_MAX; i++) {
     tile = patterns[i];
@@ -150,6 +157,10 @@ int solve_field(FIELD* f, TILE* patterns, char x, char y) {
     tile.y = y;
     if (chk_tile_placement(f, &tile)) {
       if (x + tile.width >= info->width && y + tile.height >= info->height) {
+        for (j = 0; j < f->tiles_count; j++) {
+          printf("%d,", f->tiles[j].width);
+        }
+        printf("%d\n", tile.width);
         ret += 1;
       }
       else {
@@ -175,9 +186,9 @@ int solve_field(FIELD* f, TILE* patterns, char x, char y) {
 int main (int argc, char** argv) {
   char buff[256];
   char tmpbuff[256];
-  int field_w = 0;
-  int field_h = 0;
   TILE tile_patterns[cTILE_PATTERNS_MAX];
+  FIELD field;
+  int ret = 0;
 
   init_tile_patterns(tile_patterns);
 
@@ -192,7 +203,7 @@ int main (int argc, char** argv) {
     }
     tmpbuff[i] = buff[i];
   }
-  field_w = atoi(tmpbuff);
+  g_filed_info.width = atoi(tmpbuff);
   i += 1;
 
   for (j = 0; i < strlen(buff); j++, i++){
@@ -202,9 +213,14 @@ int main (int argc, char** argv) {
     }
     tmpbuff[j] = buff[i];
   }
-  field_h = atoi(tmpbuff);
+  g_filed_info.height = atoi(tmpbuff);
 
-  printf("w:%d - h:%d\n", field_w, field_h);
+  //printf("w:%d - h:%d\n", g_filed_info.width, g_filed_info.height);
+
+  field.tiles_count = 0;
+  ret = solve_field(&field, tile_patterns, 0, 0);
+  printf("ret:%d\n", ret);
+//  printf("size:%d\n", sizeof(FIELD));
 
   return 0;
 }
