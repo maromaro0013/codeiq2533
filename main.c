@@ -76,6 +76,21 @@ int chk_tile_exist(FIELD* f, char x, char y) {
   return -1;
 }
 
+int chk_fill_field(FIELD* f) {
+  int amt = 0;
+  int i = 0;
+  FIELD_INFO* info = &g_filed_info;
+
+  for (i = 0; i < f->tiles_count; i++) {
+    amt += f->tiles[i].width*f->tiles[i].height;
+    if (amt >= info->width*info->height) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
 int tile_collision(TILE* p0, TILE* p1) {
   int x0 = p0->x;
   int x1 = p0->x + p0->width;
@@ -137,15 +152,52 @@ int tile_placement(FIELD* f, TILE* p) {
   return TRUE;
 }
 
-int solve_field(FIELD* f, TILE* patterns, char x, char y) {
+int solve_field(FIELD* f, TILE* patterns) {
   int i = 0;
   int j = 0;
+  int start_x = 0, start_y = 0;
+  int pattern = 0;
   int ret = 0;
   TILE tile;
+  int flg = FALSE;
+  TILE* p = NULL;
   FIELD* next_field = NULL;
   FIELD_INFO* info = &g_filed_info;
   int exist_idx = -1;
 
+  for (i = 0; i < info->width; i++) {
+    for (j = 0; j < info->height; j++) {
+      if (chk_tile_exist(f, i, j) == -1) {
+        flg = TRUE;
+        break;
+      }
+    }
+    if (flg == TRUE) {
+      break;
+    }
+  }
+  start_x = i;
+  start_y = j;
+
+  for (pattern = 0; pattern < cTILE_PATTERNS_MAX; pattern++) {
+    tile = patterns[pattern];
+    tile.x = i;
+    tile.y = j;
+    if (chk_tile_placement(f, &tile)) {
+      next_field = (FIELD*)malloc(sizeof(FIELD));
+      copy_field(next_field, f);
+      tile_placement(next_field, &tile);
+      if (chk_fill_field(next_field)) {
+        ret += 1;
+      }
+      else {
+        ret += solve_field(next_field, patterns);
+        free(next_field);
+      }
+    }
+  }
+
+/*
   exist_idx = chk_tile_exist(f, x, y);
   if (exist_idx > 0) {
     x += f->tiles[exist_idx].width;
@@ -180,6 +232,7 @@ int solve_field(FIELD* f, TILE* patterns, char x, char y) {
       }
     }
   }
+*/
   return ret;
 }
 
@@ -218,7 +271,7 @@ int main (int argc, char** argv) {
   //printf("w:%d - h:%d\n", g_filed_info.width, g_filed_info.height);
 
   field.tiles_count = 0;
-  ret = solve_field(&field, tile_patterns, 0, 0);
+  ret = solve_field(&field, tile_patterns);
   printf("ret:%d\n", ret);
 //  printf("size:%d\n", sizeof(FIELD));
 
