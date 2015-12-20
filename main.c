@@ -80,11 +80,6 @@ int chk_fill_field(FIELD* f) {
   for (i = 0; i < f->tiles_count; i++) {
     amt += f->tiles[i].width*f->tiles[i].height;
     if (amt > max) {
-      printf("error! - ");
-      for (j = 0; j < f->tiles_count; j++) {
-        printf("(%d) - %d*%d(%d,%d), ", max, f->tiles[i].width, f->tiles[i].height, f->tiles[i].x, f->tiles[i].y);
-      }
-      printf("\n");
       return -1;
     }
     else if (amt >= max) {
@@ -102,53 +97,7 @@ int tile_collision(TILE* p0, TILE* p1) {
        (p0->y + p0->height > p1->y             )) {
     return TRUE;
   }
-/*
-  int x0 = p0->x;
-  int x1 = p0->x + p0->width;
-  int x2 = p1->x;
-  int x3 = p1->x + p1->width;
 
-  int y0 = p0->y;
-  int y1 = p0->y + p0->height;
-  int y2 = p1->y;
-  int y3 = p1->y + p1->height;
-
-  if (x0 >= x2 && x0 < x3) {
-    if (y0 >= y2 && y0 < y3) {
-      return TRUE;
-    }
-    if (y1 > y2 && y1 <= y3) {
-      return TRUE;
-    }
-  }
-  if (x1 > x2 && x1 <= x3) {
-    if (y1 > y2 && y1 <= y3) {
-      return TRUE;
-    }
-    if (y0 >= y2 && y0 < y3) {
-      return TRUE;
-    }
-  }
-
-  if () {
-
-  }
-*/
-/*
-  if (p0->width == 4 && p0->height == 4 && p0->x == 1 && p0->y == 0) {
-    if (p1->width == 4 && p1->height == 2 && p1->x == 0 && p1->y == 1) {
-      printf("-mokyun\n");
-      printf("%d >= %d && %d < %d\n", x0, x2, x0, x3);
-      printf("%d >= %d && %d < %d\n", y0, y2, y0, y3);
-      printf("%d > %d && %d <= %d\n", y1, y2, y1, y3);
-
-      printf("%d > %d && %d <= %d\n", x1, x2, x1, x3);
-      printf("%d > %d && %d <= %d\n", y1, y2, y1, y3);
-      printf("%d >= %d && %d < %d\n", y0, y2, y0, y3);
-      printf("-mokyun\n");
-    }
-  }
-*/
   return FALSE;
 }
 
@@ -222,12 +171,6 @@ int solve_field(FIELD* f, TILE* patterns) {
       tile_placement(next_field, &tile);
       chk = chk_fill_field(next_field);
       if (chk == TRUE) {
-/*
-        for (z = 0; z < next_field->tiles_count; z++) {
-          printf("%d*%d,", next_field->tiles[z].width, next_field->tiles[z].height);
-        }
-        printf("\n");
-*/
         ret += 1;
       }
       else if (chk != -1) {
@@ -270,12 +213,6 @@ int main (int argc, char** argv) {
     tmpbuff[j] = buff[i];
   }
   g_filed_info.height = atoi(tmpbuff);
-/*
-  for (i = 0; i < cTILE_PATTERNS_MAX; i++) {
-    printf("%d:%d\n", tile_patterns[i].width, tile_patterns[i].height);
-  }
-*/
-  //printf("%d\n", sizeof(FIELD));
 
   field.tiles_count = 0;
   ret = solve_field(&field, tile_patterns);
