@@ -10,11 +10,15 @@
 #define cFIELD_FIELD_SIZE_MAX (10)
 #define cFIELD_TILES_MAX      (cFIELD_FIELD_SIZE_MAX*cFIELD_FIELD_SIZE_MAX)
 
+#define cFIELD_TILE_HASH_MAX  (2*2*16*16) // width(2bits)*height(2bits)*x(4bits)*y(4bits)
+
 typedef struct TILE_t {
   char width;
   char height;
   char x;
   char y;
+
+  unsigned short tile_hash;
 }TILE;
 
 typedef struct FIELD_INFO_t {
@@ -128,20 +132,16 @@ int solve_field(FIELD* f) {
   TILE tile;
   FIELD next_field;
   FIELD_INFO* info = &g_filed_info;
-  int flg = FALSE;
 
   for (tile.y = 0; tile.y < info->height; tile.y++) {
     for (tile.x = 0; tile.x < info->width; tile.x++) {
       if (f->tile_buff[tile.y][tile.x] != TRUE) {
-        flg = TRUE;
-        break;
+        goto exit_loop;
       }
-    }
-    if (flg == TRUE) {
-      break;
     }
   }
 
+exit_loop:
   for (pattern = 0; pattern < cTILE_PATTERNS_MAX; pattern++) {
     tile.width = g_tile_patterns[pattern].width;
     tile.height = g_tile_patterns[pattern].height;
