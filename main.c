@@ -10,7 +10,7 @@
 #define cFIELD_FIELD_SIZE_MAX (10)
 #define cFIELD_TILES_MAX      (cFIELD_FIELD_SIZE_MAX*cFIELD_FIELD_SIZE_MAX)
 
-#define cFIELD_TILE_HASH_MAX  (2*2*16*16) // width(2bits)*height(2bits)*x(4bits)*y(4bits)
+#define cFIELD_TILE_HASH_MAX  (4*4*16*16) // width(2bits)*height(2bits)*x(4bits)*y(4bits)
 
 typedef struct TILE_t {
   char width;
@@ -37,6 +37,8 @@ typedef struct FIELD_t {
 }FIELD;
 
 FIELD_INFO g_filed_info;
+char g_tile_limit_dp[cFIELD_TILE_HASH_MAX + 1];
+char g_tile_collision_dp[cFIELD_TILE_HASH_MAX + 1][cFIELD_TILE_HASH_MAX + 1];
 
 static const TILE g_tile_patterns[cTILE_PATTERNS_MAX] = {
   {1, 1, 0, 0},
@@ -65,6 +67,14 @@ int chk_tile_limit(TILE* p) {
   return TRUE;
 }
 
+unsigned short create_tile_hash(TILE* p) {
+  unsigned short ret;
+  ret = ((p->width - 1) << 10 ) | ((p->height -1) << 8) | (p->x << 4) | p->y;
+  p->tile_hash = ret;
+
+  return ret;
+}
+
 int chk_fill_field(FIELD* f) {
   FIELD_INFO* info = &g_filed_info;
 
@@ -89,14 +99,20 @@ int chk_tile_placement(FIELD* f, TILE* p) {
   int i = 0;
   TILE* target = NULL;
 
-  if (chk_tile_limit(p) == FALSE) {
+  if (g_tile_limit_dp[p->tile_hash] == -1) {
+    g_tile_limit_dp[p->tile_hash] = chk_tile_limit(p);
+  }
+  if (g_tile_limit_dp[p->tile_hash] == FALSE) {
     return FALSE;
   }
 
   for (i = 0; i < f->tiles_count; i++) {
     target = &f->tiles[i];
 
-    if (tile_collision(p, target) == TRUE) {
+    if (g_tile_collision_dp[target->tile_hash][p->tile_hash] == -1) {
+      g_tile_collision_dp[target->tile_hash][p->tile_hash] = tile_collision(p, target);
+    }
+    if (g_tile_collision_dp[target->tile_hash][p->tile_hash] == TRUE) {
       return FALSE;
     }
   }
@@ -113,6 +129,7 @@ int tile_placement(FIELD* f, TILE* p) {
   target->height = p->height;
   target->x = p->x;
   target->y = p->y;
+  target->tile_hash = p->tile_hash;
 
   f->tiles_count++;
   f->size_amount += target->width*target->height;
@@ -145,6 +162,7 @@ exit_loop:
   for (pattern = 0; pattern < cTILE_PATTERNS_MAX; pattern++) {
     tile.width = g_tile_patterns[pattern].width;
     tile.height = g_tile_patterns[pattern].height;
+    create_tile_hash(&tile);
 
     if (chk_tile_placement(f, &tile)) {
       copy_field(&next_field, f);
@@ -189,6 +207,9 @@ int main (int argc, char** argv) {
     tmpbuff[j] = buff[i];
   }
   g_filed_info.height = atoi(tmpbuff);
+
+  memset((void*)g_tile_limit_dp, -1, sizeof(g_tile_limit_dp));
+  memset((void*)g_tile_collision_dp, -1, sizeof(g_tile_collision_dp));
 
   memset((void*)&field, 0, sizeof(field));
   ret = solve_field(&field);
