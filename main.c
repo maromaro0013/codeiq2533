@@ -32,7 +32,7 @@ typedef struct FIELD_t {
   short tiles_count;
   short size_amount;
 
-  TILE tiles[cFIELD_TILES_MAX];
+  //TILE tiles[cFIELD_TILES_MAX];
   char tile_buff[cFIELD_FIELD_SIZE_MAX][cFIELD_FIELD_SIZE_MAX];
 }FIELD;
 
@@ -50,7 +50,7 @@ void copy_field(FIELD* dest, FIELD* src) {
   dest->tiles_count = src->tiles_count;
   dest->size_amount = src->size_amount;
 
-  memcpy((void*)dest->tiles, (void*)src->tiles, sizeof(TILE)*src->tiles_count);
+  //memcpy((void*)dest->tiles, (void*)src->tiles, sizeof(TILE)*src->tiles_count);
   memcpy((void*)&dest->tile_buff[0][0], (void*)&src->tile_buff[0][0], sizeof(dest->tile_buff));
 }
 
@@ -83,17 +83,6 @@ int chk_fill_field(FIELD* f) {
   return FALSE;
 }
 
-int tile_collision(TILE* p0, TILE* p1) {
-  if ( (p0->x              < p1->x + p1->width ) &&
-       (p0->x + p0->width  > p1->x             ) &&
-       (p0->y              < p1->y + p1->height) &&
-       (p0->y + p0->height > p1->y             )) {
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
 int chk_tile_placement(FIELD* f, TILE* p) {
   int i = 0;
   int x, y;
@@ -119,17 +108,18 @@ int chk_tile_placement(FIELD* f, TILE* p) {
 
 int tile_placement(FIELD* f, TILE* p) {
   FIELD_INFO* info = &g_filed_info;
-  TILE* target = &f->tiles[f->tiles_count];
   int i, j;
 
+/*
+  TILE* target = &f->tiles[f->tiles_count];
   target->width = p->width;
   target->height = p->height;
   target->x = p->x;
   target->y = p->y;
   target->tile_hash = p->tile_hash;
-
+*/
   f->tiles_count++;
-  f->size_amount += target->width*target->height;
+  f->size_amount += p->width*p->height;
 
   for (i = p->y; i < (p->y + p->height); i++) {
     for (j = p->x; j < (p->x + p->width); j++) {
