@@ -6,11 +6,13 @@
 #define TRUE  (1)
 
 #define cTILE_PATTERNS_MAX    (4)
-#define cTILE_SIZE_MAX        (8)
-#define cFIELD_FIELD_SIZE_MAX (10)
-#define cFIELD_TILES_MAX      (cFIELD_FIELD_SIZE_MAX*cFIELD_FIELD_SIZE_MAX)
+#define cFIELD_SIZE           (10)
+#define cFIELD_TILE_BUFF_SIZE (13)        // 104bits
 
 #define cFIELD_TILE_HASH_MAX  (4*4*16*16) // width(2bits)*height(2bits)*x(4bits)*y(4bits)
+
+#define get_tile_buff(buff, y, x)      ( (buff[(y*cFIELD_SIZE + x)/8] >> (x%8)) & 1 )
+#define set_tile_buff(buff, y, x)      ( (buff[(y*cFIELD_SIZE + x)/8] |= 1 << (x%8)) )
 
 typedef struct TILE_t {
   char width;
@@ -29,11 +31,11 @@ typedef struct FIELD_INFO_t {
 }FIELD_INFO;
 
 typedef struct FIELD_t {
-  short tiles_count;
-  short size_amount;
+  char tiles_count;
+  char size_amount;
+  char buff;
 
-  //TILE tiles[cFIELD_TILES_MAX];
-  char tile_buff[cFIELD_FIELD_SIZE_MAX][cFIELD_FIELD_SIZE_MAX];
+  char tile_buff[cFIELD_SIZE*cFIELD_SIZE];
 }FIELD;
 
 FIELD_INFO g_filed_info;
@@ -45,14 +47,6 @@ static const TILE g_tile_patterns[cTILE_PATTERNS_MAX] = {
   {4, 2, 0, 0},
   {4, 4, 0, 0},
 };
-
-void copy_field(FIELD* dest, FIELD* src) {
-  dest->tiles_count = src->tiles_count;
-  dest->size_amount = src->size_amount;
-
-  //memcpy((void*)dest->tiles, (void*)src->tiles, sizeof(TILE)*src->tiles_count);
-  memcpy((void*)&dest->tile_buff[0][0], (void*)&src->tile_buff[0][0], sizeof(dest->tile_buff));
-}
 
 int chk_tile_limit(TILE* p) {
   FIELD_INFO* info = &g_filed_info;
@@ -84,6 +78,7 @@ int chk_fill_field(FIELD* f) {
 }
 
 int chk_tile_placement(FIELD* f, TILE* p) {
+  FIELD_INFO* info = &g_filed_info;
   int i = 0;
   int x, y;
   TILE* target = NULL;
@@ -97,7 +92,8 @@ int chk_tile_placement(FIELD* f, TILE* p) {
 
   for (y = p->y; y < p->y + p->height; y++) {
     for (x = p->x; x < p->x + p->width; x++) {
-      if (f->tile_buff[y][x] == TRUE) {
+//      if (f->tile_buff[y*info->width + x] == TRUE) {
+      if (get_tile_buff(f->tile_buff, y, x)) {
         return FALSE;
       }
     }
@@ -108,25 +104,17 @@ int chk_tile_placement(FIELD* f, TILE* p) {
 
 int tile_placement(FIELD* f, TILE* p) {
   FIELD_INFO* info = &g_filed_info;
-  int i, j;
+  int x, y;
 
-/*
-  TILE* target = &f->tiles[f->tiles_count];
-  target->width = p->width;
-  target->height = p->height;
-  target->x = p->x;
-  target->y = p->y;
-  target->tile_hash = p->tile_hash;
-*/
   f->tiles_count++;
   f->size_amount += p->width*p->height;
 
-  for (i = p->y; i < (p->y + p->height); i++) {
-    for (j = p->x; j < (p->x + p->width); j++) {
-      f->tile_buff[i][j] = TRUE;
+  for (y = p->y; y < (p->y + p->height); y++) {
+    for (x = p->x; x < (p->x + p->width); x++) {
+//      f->tile_buff[i*info->width + j] = TRUE;
+      set_tile_buff(f->tile_buff, y, x);
     }
   }
-
   return TRUE;
 }
 
@@ -139,7 +127,8 @@ int solve_field(FIELD* f) {
 
   for (tile.y = 0; tile.y < info->height; tile.y++) {
     for (tile.x = 0; tile.x < info->width; tile.x++) {
-      if (f->tile_buff[tile.y][tile.x] != TRUE) {
+//      if (f->tile_buff[tile.y*info->width + tile.x] != TRUE) {
+      if (!get_tile_buff(f->tile_buff, tile.y, tile.x)) {
         goto exit_loop;
       }
     }
@@ -152,7 +141,7 @@ exit_loop:
     create_tile_hash(&tile);
 
     if (pattern == 0 || chk_tile_placement(f, &tile)) {
-      copy_field(&next_field, f);
+      next_field = *f;
       tile_placement(&next_field, &tile);
 
       if (chk_fill_field(&next_field) == TRUE) {
