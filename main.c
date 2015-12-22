@@ -147,12 +147,6 @@ int tile_placement(FIELD* f, TILE* p) {
         f->empty[j] = f->empty[j + 1];
       }
       i--;
-/*
-      if (i+1 < f->empty_cnt) {
-        memcpy((void*)&f->empty[i], (void*)&f->empty[i+1], sizeof(POS)*(f->empty_cnt - i - 1));
-        i--;
-      }
-*/
       f->empty_cnt--;
     }
   }
@@ -163,41 +157,45 @@ int tile_placement(FIELD* f, TILE* p) {
 int solve_field(FIELD* f, int pattern_max) {
   int pattern = 0;
   int ret = 0;
+  int i = 0;
   TILE tile;
+  TILE pat;
   FIELD next_field;
   FIELD_INFO* info = &g_filed_info;
 
-/*
-  for (tile.y = 0; tile.y < info->h; tile.y++) {
-    for (tile.x = 0; tile.x < info->w; tile.x++) {
-      if (!get_tile_buff(f->tile_buff, tile.y, tile.x)) {
-        goto exit_loop;
-      }
-    }
-  }
-
-exit_loop:
-*/
   tile.x = f->empty[0].x;
   tile.y = f->empty[0].y;
-  for (pattern = 0; pattern < pattern_max; pattern++) {
+
+  for (pattern = pattern_max - 1; pattern >= 0; pattern--) {
     tile.w = g_tile_patterns[pattern].w;
     tile.h = g_tile_patterns[pattern].h;
     create_tile_hash(&tile);
 
     if (pattern == 0 || chk_tile_placement(f, &tile)) {
       memcpy((void*)&next_field, (void*)f, sizeof(next_field));
-      //next_field = *f;
       tile_placement(&next_field, &tile);
 
       if (chk_fill_field(&next_field) == TRUE) {
         ret += 1;
       }
       else {
-        ret += solve_field(&next_field, pattern_max);
+        for (i = pattern_max; i > 1; i--) {
+          pat = g_tile_patterns[i - 1];
+          // 残りの空きスペースチェック
+          if ((info->h*info->w - f->size_amount) >= pat.h*pat.w) {
+            break;
+          }
+        }
+        if (i == 1) {
+          return 1;
+        }
+        else {
+          ret += solve_field(&next_field, i);
+        }
       }
     }
   }
+
   return ret;
 }
 
