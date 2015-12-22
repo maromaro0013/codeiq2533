@@ -15,12 +15,10 @@
 #define set_tile_buff(buff, y, x)      ( (buff[(y*cFIELD_SIZE + x)/8] |= 1 << (x%8)) )
 
 typedef struct TILE_t {
-  char width;
-  char height;
+  char w;
+  char h;
   char x;
   char y;
-
-  unsigned short tile_hash;
 }TILE;
 
 typedef struct FIELD_INFO_t {
@@ -35,12 +33,13 @@ typedef struct FIELD_t {
   char size_amount;
   char buff;
 
+  char tile_buff[cFIELD_TILE_BUFF_SIZE];
+
   TILE tiles[cFIELD_SIZE*cFIELD_SIZE];
-  char tile_buff[cFIELD_SIZE*cFIELD_SIZE];
 }FIELD;
 
 FIELD_INFO g_filed_info;
-char g_tile_limit_dp[cFIELD_TILE_HASH_MAX + 1];
+//char g_tile_limit_dp[cFIELD_TILE_HASH_MAX + 1];
 
 static const TILE g_tile_patterns[cTILE_PATTERNS_MAX] = {
   {1, 1, 0, 0},
@@ -52,15 +51,15 @@ static const TILE g_tile_patterns[cTILE_PATTERNS_MAX] = {
 int chk_tile_limit(TILE* p) {
   FIELD_INFO* info = &g_filed_info;
 
-  if (p->y + p->height > info->h) {
+  if (p->y + p->h > info->h) {
     return FALSE;
   }
-  if (p->x + p->width > info->w) {
+  if (p->x + p->w > info->w) {
     return FALSE;
   }
   return TRUE;
 }
-
+/*
 unsigned short create_tile_hash(TILE* p) {
   unsigned short ret;
   ret = ((p->width - 1) << 10 ) | ((p->height -1) << 8) | (p->x << 4) | p->y;
@@ -68,7 +67,7 @@ unsigned short create_tile_hash(TILE* p) {
 
   return ret;
 }
-
+*/
 int chk_fill_field(FIELD* f) {
   FIELD_INFO* info = &g_filed_info;
 
@@ -85,15 +84,12 @@ int chk_tile_placement(const FIELD* f, TILE* p) {
   int x, y;
   TILE* target = NULL;
 
-  if (g_tile_limit_dp[p->tile_hash] == -1) {
-    g_tile_limit_dp[p->tile_hash] = chk_tile_limit(p);
-  }
-  if (g_tile_limit_dp[p->tile_hash] == FALSE) {
+  if (chk_tile_limit(p) == FALSE) {
     return FALSE;
   }
 
-  for (y = p->y; y < p->y + p->height; y++) {
-    for (x = p->x; x < p->x + p->width; x++) {
+  for (y = p->y; y < p->y + p->h; y++) {
+    for (x = p->x; x < p->x + p->w; x++) {
       if (get_tile_buff(f->tile_buff, y, x)) {
         return FALSE;
       }
@@ -106,16 +102,13 @@ int chk_tile_placement(const FIELD* f, TILE* p) {
 int tile_placement(FIELD* f, TILE* p) {
   int x, y;
 
-  f->tiles[f->tiles_count].width = p->width;
-  f->tiles[f->tiles_count].height = p->height;
-  f->tiles[f->tiles_count].x = p->x;
-  f->tiles[f->tiles_count].y = p->y;
+  f->tiles[f->tiles_count] = *p;
 
   f->tiles_count++;
-  f->size_amount += p->width*p->height;
+  f->size_amount += p->w*p->h;
 
-  for (y = p->y; y < (p->y + p->height); y++) {
-    for (x = p->x; x < (p->x + p->width); x++) {
+  for (y = p->y; y < (p->y + p->h); y++) {
+    for (x = p->x; x < (p->x + p->w); x++) {
       set_tile_buff(f->tile_buff, y, x);
     }
   }
@@ -129,13 +122,61 @@ int solve_field(const FIELD* f, int pattern) {
   FIELD next_field;
   FIELD_INFO* info = &g_filed_info;
 
-  tile.width = g_tile_patterns[pattern].width;
-  tile.height = g_tile_patterns[pattern].height;
+  tile.w = g_tile_patterns[pattern].w;
+  tile.h = g_tile_patterns[pattern].h;
 
+  if (pattern == 0) {
+    next_field = *f;
+    for (tile.y = 0; tile.y < info->h; tile.y++) {
+      for (tile.x = 0; tile.x < info->w; tile.x++) {
+        if (!get_tile_buff(next_field.tile_buff, tile.y, tile.x)) {
+          tile_placement(&next_field, &tile);
+          if (chk_fill_field(&next_field) == TRUE) {
+            for (i = 0; i < next_field.tiles_count; i++) {
+              printf("%d*%d(%d,%d), ", next_field.tiles[i].w, next_field.tiles[i].h, next_field.tiles[i].x, next_field.tiles[i].y);
+            }
+            printf("\n");
+            return 1; // 終着点
+          }
+        }
+      }
+    }
+    printf("error!!\n");
+    return 0; // ここに来ることはないはず(必ず"chk_fill_field"に引っかかるはず)
+  }
+  else {
+    for (tile.y = 0; tile.y < info->h; tile.y++) {
+      for (tile.x = 0; tile.x < info->w; tile.x++) {
+        if (!get_tile_buff(f->tile_buff, tile.y, tile.x)) {
+          next_field = *f;
+          if (chk_tile_placement(&next_field, &tile)) {
+            tile_placement(&next_field, &tile);
+            if (chk_fill_field(&next_field) == TRUE) {
+              for (i = 0; i < next_field.tiles_count; i++) {
+                printf("%d*%d(%d,%d), ", next_field.tiles[i].w, next_field.tiles[i].h, next_field.tiles[i].x, next_field.tiles[i].y);
+              }
+              printf("\n");
+              ret += 1;
+            }
+            else {
+              if (next_field.size_amount >= tile.w*tile.h) {
+                ret += solve_field(&next_field, pattern);
+              }
+              //ret += solve_field(&next_field, pattern - 1);
+            }
+          }
+        }
+      }
+    }
+    ret += solve_field(f, pattern - 1);
+  }
+  return ret;
+/*
   for (tile.y = 0; tile.y < info->h; tile.y++) {
     for (tile.x = 0; tile.x < info->w; tile.x++) {
       if (!get_tile_buff(f->tile_buff, tile.y, tile.x)) {
         create_tile_hash(&tile);
+
         if (pattern == 0 || chk_tile_placement(f, &tile)) {
           next_field = *f;
           tile_placement(&next_field, &tile);
@@ -161,43 +202,6 @@ int solve_field(const FIELD* f, int pattern) {
   }
 
   ret += solve_field(f, pattern - 1);
-
-  return ret;
-/*
-int solve_field(FIELD* f) {
-  int pattern = 0;
-  int ret = 0;
-  TILE tile;
-  FIELD next_field;
-  FIELD_INFO* info = &g_filed_info;
-
-  for (tile.y = 0; tile.y < info->h; tile.y++) {
-    for (tile.x = 0; tile.x < info->w; tile.x++) {
-//      if (f->tile_buff[tile.y*info->width + tile.x] != TRUE) {
-      if (!get_tile_buff(f->tile_buff, tile.y, tile.x)) {
-        goto exit_loop;
-      }
-    }
-  }
-
-exit_loop:
-  for (pattern = 0; pattern < cTILE_PATTERNS_MAX; pattern++) {
-    tile.width = g_tile_patterns[pattern].width;
-    tile.height = g_tile_patterns[pattern].height;
-    create_tile_hash(&tile);
-
-    if (pattern == 0 || chk_tile_placement(f, &tile)) {
-      next_field = *f;
-      tile_placement(&next_field, &tile);
-
-      if (chk_fill_field(&next_field) == TRUE) {
-        ret += 1;
-      }
-      else {
-        ret += solve_field(&next_field);
-      }
-    }
-  }
   return ret;
 */
 }
@@ -231,8 +235,6 @@ int main (int argc, char** argv) {
     tmpbuff[j] = buff[i];
   }
   g_filed_info.h = atoi(tmpbuff);
-
-  memset((void*)g_tile_limit_dp, -1, sizeof(g_tile_limit_dp));
 
   memset((void*)&field, 0, sizeof(field));
   ret = solve_field(&field, cTILE_PATTERNS_MAX - 1);
